@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>食分 · 食品分类与国标依据</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css?v=1.2">
+  <script src="/app.js?v=1.2" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="食分首页"><span class="brand-mark">食</span><span>食分<small>食品分类与国标依据</small></span></a>
+  <div class="nav-label">工作空间</div>
+  <nav aria-label="主要导航">
+    <button class="nav active" data-view="search"><span>⌕</span> 食品分类 <i>01</i></button>
+    <button class="nav" data-view="catalog"><span>▦</span> 食品目录 <i>02</i></button>
+    <button class="nav" data-view="definitions"><span>≡</span> 产品种类定义 <i>03</i></button>
+    <button class="nav" data-view="history"><span>◷</span> 查询记录 <i>04</i></button>
+  </nav>
+  <div class="sidebar-note"><span class="live-dot"></span> 本机资料库已连接<p>来源有记录，分类有依据。<br>每一个判断，都能回到原文。</p><a href="#" id="about-link">查看资料覆盖与使用说明 ↗</a></div>
+  <footer class="side-footer">LOCAL WORKSPACE <span>v1.2</span></footer>
+</aside>
+<div class="workspace">
+  <header class="topbar"><div><span class="breadcrumb">工作空间</span><span class="slash">/</span><span id="page-label">食品分类</span></div><div class="snapshot"><span class="live-dot"></span> 资料快照 <b id="snapshot">加载中</b></div></header>
+  <main>
+    <section id="search-view">
+      <div class="intro"><div><div class="eyebrow">FOOD CLASSIFICATION / 食品分类</div><h1>查食品类别，也查原文依据。</h1><p>输入食品名称，逐层查看分类、检验项目和关联国家标准。</p></div><div class="intro-badge"><span>源</span><p>以原文为依据<br><b>按标准分别分类</b></p></div></div>
+      <form id="search-form" class="search-card">
+        <label class="field-label" for="food-input">你要查询哪种食品？</label>
+        <div class="search-row"><span class="search-icon" aria-hidden="true">⌕</span><input id="food-input" name="food" maxlength="100" autocomplete="off" required placeholder="例如：苹果、巴氏杀菌乳、鸡肉、小麦粉"><button class="primary" id="search-button" type="submit">查分类与标准 <span>↗</span></button></div>
+        <div class="sample-row"><span>试一试</span><button type="button" class="chip sample" data-food="苹果" data-process="fresh">新鲜苹果</button><button type="button" class="chip sample" data-food="巴氏杀菌乳" data-package="prepackaged">巴氏杀菌乳</button><button type="button" class="chip sample" data-food="鸡肉" data-process="fresh">新鲜鸡肉</button><button type="button" class="chip sample" data-food="小麦粉">小麦粉</button><button type="button" class="chip sample" data-food="白萝卜" data-process="fresh">白萝卜</button><button type="button" class="chip sample" data-food="酱油">酱油</button></div>
+        <div class="attributes"><label>加工状态 <select id="process"><option value="">未说明</option><option value="fresh">新鲜 / 未加工</option><option value="frozen">冷冻 / 速冻</option><option value="cooked">熟制</option><option value="dried">干制</option><option value="pickled">腌渍</option><option value="fermented">发酵</option><option value="drink">果汁 / 饮料</option></select></label><label>包装形式 <select id="packaging"><option value="">未说明</option><option value="prepackaged">预包装</option><option value="bulk">散装</option></select></label><button type="button" class="text-button" id="notes-toggle" aria-expanded="false">＋ 补充配料与工艺</button><span class="attribute-hint">这些信息有助于区分相似食品</span></div>
+        <div id="notes-box" hidden><label for="notes">补充说明（供人工复核使用）</label><textarea id="notes" maxlength="1000" rows="3" placeholder="例如：主要配料、加工方式、是否即食、执行标准。当前规则不自动解释自由文本中的条件。"></textarea></div>
+      </form>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="loading" class="loading" role="status" hidden><span class="spinner"></span> 正在核对食品目录、分类原文和标准文件…</div>
+      <section id="welcome">
+        <div class="welcome-top"><h2>从食品到标准，循据可查</h2><span>当前资料覆盖</span></div>
+        <div class="stats-grid"><div><span>食品大类</span><b id="stat-chapters">—</b><small>2026 年抽检实施细则</small></div><div><span>细分类别</span><b id="stat-foods">—</b><small>对应具体检验项目表</small></div><div><span>标准记录</span><b id="stat-standards">—</b><small>保留版本及原文状态</small></div><div><span>独立分类体系</span><b id="stat-taxonomies">—</b><small>分别核对，不共用标签</small></div></div>
+        <div class="how-grid"><article><span class="step">01 / 分类</span><h3>先确认它是什么</h3><p>从规范名称、产品种类和加工状态定位食品类别。有歧义时，展开候选。</p></article><article><span class="step">02 / 依据</span><h3>每条依据都能打开</h3><p>查看分类原句、所在条目与 PDF 页码，直接对照原始标准页面。</p></article><article><span class="step">03 / 文件</span><h3>顺着项目找到国标</h3><p>分别列出判定依据和检验方法，查看版本、下载原文及资料包。</p></article></div>
+        <div class="coverage-note"><b>使用范围</b><p>基于已收录资料提供分类候选。部分原文和分类映射仍有缺口；具体必检项目、标准版本及适用条件，须结合样品与任务确认。</p></div>
+      </section>
+      <section id="results" hidden aria-live="polite"></section>
+    </section>
+    <section id="catalog-view" hidden><div class="eyebrow">FOOD DIRECTORY / 食品目录</div><h1>按食品目录逐层查找</h1><p class="muted">覆盖 39 个食品大类；选择具体条目可以展开对应依据和检验项目。</p><div class="catalog-toolbar"><input id="catalog-search" placeholder="搜索食品类别" aria-label="搜索食品类别"><select id="chapter-filter" aria-label="筛选食品大类"><option value="">全部食品大类</option></select></div><div id="catalog-list"></div></section>
+    <section id="history-view" hidden><div class="eyebrow">QUERY HISTORY / 查询记录</div><h1>保留每次查询的依据</h1><p class="muted">查询结果、资料版本和人工处理记录保存在本机。</p><div id="history-list"></div></section>
+    <section id="definitions-view" hidden><div class="eyebrow">PRODUCT DEFINITIONS / 分类的原文依据</div><h1>先看定义，再分食品。</h1><p class="muted">抽检细则 102 个分节的“产品种类”全文。一起核对原料、工艺、用途与排除条件，再关联检验项目。</p><div class="catalog-toolbar"><input id="definition-search" placeholder="检索原文，例如：小麦粉、黑米、小龙虾" aria-label="搜索产品种类定义"><span id="definition-count"></span><a class="small-action" href="/api/definitions" target="_blank" rel="noopener">完整定义数据 ↗</a></div><p class="subtle">这里按全文检索；某食品作为配料出现，不代表它属于该成品类别。抽取的品种关系是候选，原句中的条件须逐项核对。</p><div id="definition-list"></div></section>
+  </main>
+  <footer class="main-footer"><span>食分 · 食品分类与国标依据</span><span>分类与标准适用需要证据，资料缺失会单独说明。</span></footer>
+</div>
+<dialog id="evidence-dialog" class="evidence-dialog"><div class="dialog-header"><div><span class="eyebrow">SOURCE EVIDENCE</span><h2 id="evidence-title">原文依据</h2></div><button class="icon-button close-dialog" aria-label="关闭原文">×</button></div><div id="evidence-content"></div></dialog>
+<dialog id="standard-dialog" class="standard-dialog"><div class="dialog-header"><div><span class="eyebrow">STANDARD REFERENCES</span><h2>标准原文与引用</h2></div><button class="icon-button close-dialog" aria-label="关闭标准详情">×</button></div><div id="standard-content"></div></dialog>
+<dialog id="about-dialog" class="about-dialog"><div class="dialog-header"><h2>资料覆盖与使用说明</h2><button class="icon-button close-dialog" aria-label="关闭说明">×</button></div><div class="dialog-body"><p>本系统使用项目内的食品标准资料库，资料快照截至 <b>2026-10-09</b>。共 39 大类、102 分节、272 个检验项目表和 9 套分别保留的分类体系。</p><p>目前使用规则和原文检索提出分类候选。没有匹配结果不代表标准不适用；名称匹配也不代表已经核实配料、加工工艺、例外条款或全部检验项目。</p><p>“关联国标”包括具体项目直接引用和所在分节引用，两者分开展示。标准正文的间接引用仅供进一步核对，不自动纳入必检清单。报批稿和附件身份冲突文件不会作为正式原文打包。</p><p>默认资料包收录有年号引用的指定版，以及无年号引用的快照现行候选版；历史版本可选择纳入。资料包附带来源、状态与缺口清单。</p><p>原文文字提取可能存在扫描页或编码缺陷，请以页面图像核对。Word 文件保留正文顺序，不伪造 PDF 页码。</p><p>本版本仅在本机运行。查询及处理记录保存在本机；处理人姓名由用户填写，尚未接入机构账号与角色认证。</p></div></dialog>
+<div id="toast" role="status" hidden></div>
+</body></html>
