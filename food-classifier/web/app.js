@@ -3,13 +3,15 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const APP_BASE = new URL('.', document.currentScript.src).pathname.replace(/\/$/, '');
+const appUrl = path => APP_BASE + path;
 const state = {result:null, tab:'classification', filter:'direct', standardSearch:'', catalog:null, evidence:new Map(), evidenceSeq:0, busy:false};
 const statuses = {name_match:'名称匹配 · 待核范围', definition_match:'已关联上级检验表 · 待核范围', needs_details:'待补充信息', user_selected:'用户选择 · 待复核', not_covered:'暂未找到可靠分类'};
 const bytes = n => n > 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + ' MB' : Math.round((n || 0) / 1024) + ' KB';
 const external = url => /^https?:\/\//i.test(url || '') ? esc(url) : '';
 
 async function api(path, payload) {
-  const response = await fetch(path, payload === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const response = await fetch(appUrl(path), payload === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || '请求失败，请重试。');
   return data;
@@ -72,7 +74,7 @@ function renderResult() {
   const standardCount = s ? r.counts.national : '待确认';
   $('#results').hidden = false;
   $('#results').innerHTML = `
-    <div class="result-head"><div><h2>${esc(r.query)}</h2><span class="badge ${r.status === 'name_match' ? '' : 'amber'}">${statuses[r.status] || esc(r.status)}</span><p>${esc(r.reason)}</p></div><div class="result-actions"><a class="small-action" href="/api/queries/${esc(r.id)}/export" download>导出查询结果 ↓</a></div></div>
+    <div class="result-head"><div><h2>${esc(r.query)}</h2><span class="badge ${r.status === 'name_match' ? '' : 'amber'}">${statuses[r.status] || esc(r.status)}</span><p>${esc(r.reason)}</p></div><div class="result-actions"><a class="small-action" href="${APP_BASE}/api/queries/${esc(r.id)}/export" download>导出查询结果 ↓</a></div></div>
     ${r.questions.length ? `<div class="notice">${r.questions.map(q=>`<p>• ${esc(q)}</p>`).join('')}</div>` : ''}
     ${candidates.length ? `<div class="section-heading"><div><h3>选择与实物相符的食品类型</h3><p>候选按原文名称匹配排列；补充加工状态后可重新查询。</p></div></div><div class="candidate-grid">${candidates.map(candidateHtml).join('')}</div>` : ''}
     ${s ? `<div class="result-summary"><div><div class="trail">2026 年抽检实施细则 / ${esc(s.chapter)} / ${esc(s.section_name)}</div><h3>${esc(s.classification?.label || s.label)}</h3>${evidenceButton(primaryEvidence, (s.classification ? s.label + ' · ' : '') + position(primaryEvidence) + ' · 查看分类原文 ↗')}</div><div class="summary-counts"><div><b>${r.counts.items}</b><span>细则检验项目</span></div><div><b>${r.counts.national}</b><span>关联国标编号</span></div><div><b>${r.counts.missing}</b><span>缺正式原文</span></div></div></div>` : ''}
@@ -174,7 +176,7 @@ function standardMatches(s) {
 function renderStandards(panel) {
   const r = state.result;
   if (!r.selected) { panel.innerHTML = pendingInspectionHtml(r); return; }
-  panel.innerHTML = `<div class="downloads-bar"><div><b>把本次关联的国标原文带走</b><p>默认含指定年号版与现行候选版，附来源、版本及缺口清单；包含分节引用候选。</p></div><div class="download-options"><label><input type="checkbox" id="include-history"> 含其他正式版本</label><a class="primary" id="bundle-link" href="/api/queries/${esc(r.id)}/bundle" download>下载国标资料包 ↓</a></div></div><div class="filters"><input id="standard-search" aria-label="筛选标准或检验项目" placeholder="筛选标准号、名称或检验项目" value="${esc(state.standardSearch)}">${[['direct','项目直接引用'],['all','全部国标'],['section','分节其他引用'],['missing','缺原文 '+r.counts.missing],['other','行业 / 补充依据']].map(([key,name])=>`<button class="filter ${state.filter===key?'active':''}" data-filter="${key}">${esc(name)}</button>`).join('')}</div><div id="standard-list"></div>`;
+  panel.innerHTML = `<div class="downloads-bar"><div><b>把本次关联的国标原文带走</b><p>默认含指定年号版与现行候选版，附来源、版本及缺口清单；包含分节引用候选。</p></div><div class="download-options"><label><input type="checkbox" id="include-history"> 含其他正式版本</label><a class="primary" id="bundle-link" href="${APP_BASE}/api/queries/${esc(r.id)}/bundle" download>下载国标资料包 ↓</a></div></div><div class="filters"><input id="standard-search" aria-label="筛选标准或检验项目" placeholder="筛选标准号、名称或检验项目" value="${esc(state.standardSearch)}">${[['direct','项目直接引用'],['all','全部国标'],['section','分节其他引用'],['missing','缺原文 '+r.counts.missing],['other','行业 / 补充依据']].map(([key,name])=>`<button class="filter ${state.filter===key?'active':''}" data-filter="${key}">${esc(name)}</button>`).join('')}</div><div id="standard-list"></div>`;
   renderStandardList();
 }
 
@@ -185,7 +187,7 @@ function renderStandardList() {
 
 function renderReview(panel) {
   const r = state.result;
-  panel.innerHTML = `<div class="section-heading"><div><h3>保留本次分类的人工处理记录</h3><p>处理动作不会覆盖系统原始结果，也不会把用户选择自动升级为专家确认。</p></div></div><form id="review-form" class="review-form"><div class="review-fields"><label>处理人<input id="review-actor" maxlength="60" required autocomplete="name" placeholder="填写姓名"></label><label>处理动作<select id="review-action"><option>确认候选</option><option>驳回候选</option><option>补充资料</option><option>提交专家</option></select></label></div><label>依据与处理说明<textarea id="review-note" rows="4" maxlength="2000" required placeholder="写明确认哪套标准中的哪个类别、依据位置，或需要补充的产品信息。"></textarea></label><button class="primary" type="submit">保存处理记录</button><p class="subtle">本机版本的处理人由用户填写，尚未接入账号与角色认证。</p></form><div id="review-history">${(r.reviews||[]).length ? r.reviews.map(item=>`<article class="review-log"><b>${esc(item.action)}</b><small>${esc(item.actor)}</small><p>${esc(item.note)}</p><time>${esc(item.created_at.replace('T',' '))}</time></article>`).join(''):'<div class="empty">本次查询还没有人工处理记录。</div>'}</div>`;
+  panel.innerHTML = `<div class="section-heading"><div><h3>保留本次分类的人工处理记录</h3><p>处理动作不会覆盖系统原始结果，也不会把用户选择自动升级为专家确认。</p></div></div><form id="review-form" class="review-form"><div class="review-fields"><label>处理人<input id="review-actor" maxlength="60" required autocomplete="name" placeholder="填写姓名"></label><label>处理动作<select id="review-action"><option>确认候选</option><option>驳回候选</option><option>补充资料</option><option>提交专家</option></select></label></div><label>依据与处理说明<textarea id="review-note" rows="4" maxlength="2000" required placeholder="写明确认哪套标准中的哪个类别、依据位置，或需要补充的产品信息。"></textarea></label><button class="primary" type="submit">保存处理记录</button><p class="subtle">处理人由用户填写，尚未接入账号与角色认证。</p></form><div id="review-history">${(r.reviews||[]).length ? r.reviews.map(item=>`<article class="review-log"><b>${esc(item.action)}</b><small>${esc(item.actor)}</small><p>${esc(item.note)}</p><time>${esc(item.created_at.replace('T',' '))}</time></article>`).join(''):'<div class="empty">本次查询还没有人工处理记录。</div>'}</div>`;
 }
 
 async function loadCatalog() {
@@ -221,7 +223,7 @@ function openEvidence(ev) {
   const dialog = $('#evidence-dialog');
   $('#evidence-title').textContent = ev.file?.name || '原文依据';
   const link = ev.file?.url + (ev.pdf_page ? '#page=' + ev.pdf_page : '');
-  $('#evidence-content').innerHTML = `<div class="dialog-body"><div class="evidence-tools"><span>${esc(position(ev))}</span><a class="small-action" target="_blank" rel="noopener" href="${esc(link)}">打开完整原文 ↗</a><a class="small-action" href="${esc(ev.file?.download_url)}" download>下载文件 ↓</a></div><p class="evidence-locator">${esc(ev.locator)}${ev.bbox?' · 已定位到该页表格区域':''}</p>${ev.quote?`<blockquote class="evidence-quote">${esc(ev.quote)}</blockquote>`:''}${ev.file?.format==='pdf' && ev.pdf_page ? `<div class="page-placeholder" id="preview-status">正在读取原文第 ${ev.pdf_page} 页…</div><img class="page-image" id="source-preview" alt="${esc(ev.file.name)}，PDF 第 ${ev.pdf_page} 页" src="/api/files/${esc(ev.file_id)}/preview?page=${ev.pdf_page}" hidden>`:'<p class="muted">此文件为 Word 原文，请下载核对正文段落。</p>'}<p class="subtle">来源文件 SHA-256：${esc(ev.file?.sha256 || '见资料库下载记录')}</p></div>`;
+  $('#evidence-content').innerHTML = `<div class="dialog-body"><div class="evidence-tools"><span>${esc(position(ev))}</span><a class="small-action" target="_blank" rel="noopener" href="${esc(link)}">打开完整原文 ↗</a><a class="small-action" href="${esc(ev.file?.download_url)}" download>下载文件 ↓</a></div><p class="evidence-locator">${esc(ev.locator)}${ev.bbox?' · 已定位到该页表格区域':''}</p>${ev.quote?`<blockquote class="evidence-quote">${esc(ev.quote)}</blockquote>`:''}${ev.file?.format==='pdf' && ev.pdf_page ? `<div class="page-placeholder" id="preview-status">正在读取原文第 ${ev.pdf_page} 页…</div><img class="page-image" id="source-preview" alt="${esc(ev.file.name)}，PDF 第 ${ev.pdf_page} 页" src="${APP_BASE}/api/files/${esc(ev.file_id)}/preview?page=${ev.pdf_page}" hidden>`:'<p class="muted">此文件为 Word 原文，请下载核对正文段落。</p>'}<p class="subtle">来源文件 SHA-256：${esc(ev.file?.sha256 || '见资料库下载记录')}</p></div>`;
   if (!dialog.open) dialog.showModal();
   const img = $('#source-preview');
   if (img) {
@@ -300,13 +302,18 @@ document.addEventListener('input', event=>{
 });
 document.addEventListener('change', event=>{
   if(event.target.id==='chapter-filter') renderCatalog();
-  if(event.target.id==='include-history') $('#bundle-link').href='/api/queries/'+state.result.id+'/bundle'+(event.target.checked?'?history=1':'');
+  if(event.target.id==='include-history') $('#bundle-link').href=appUrl('/api/queries/'+state.result.id+'/bundle'+(event.target.checked?'?history=1':''));
 });
 $('#notes-toggle').addEventListener('click',()=>{const box=$('#notes-box');box.hidden=!box.hidden;$('#notes-toggle').setAttribute('aria-expanded',String(!box.hidden));});
 $('#about-link').addEventListener('click',event=>{event.preventDefault();$('#about-dialog').showModal();});
 $$('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();}));
 
 api('/api/meta').then(meta=>{
+  if (meta.deployment_mode === 'shared') {
+    $('#library-location').textContent = '在线资料库已连接';
+    $('#history-storage-note').textContent = '这里只显示此浏览器的查询及处理记录。清除网站 Cookie 或更换浏览器后，无法找回原记录，请及时导出保存。';
+    $('#about-dialog .dialog-body p:last-child').textContent = '查询及处理记录保存在网站服务器，按浏览器隔离。处理人姓名由用户填写，尚未接入机构账号与角色认证；请及时导出重要记录。';
+  }
   $('#snapshot').textContent=meta.snapshot;
   $('#stat-chapters').textContent=meta.chapters; $('#stat-foods').textContent=meta.food_entries;
   $('#stat-standards').textContent=meta.standards.toLocaleString(); $('#stat-taxonomies').textContent=meta.taxonomies;

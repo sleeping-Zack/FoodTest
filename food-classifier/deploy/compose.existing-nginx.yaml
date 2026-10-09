@@ -1,0 +1,44 @@
+# Use when an existing HTTPS gateway owns ports 80/443.
+services:
+  classifier:
+    build:
+      context: ../..
+      dockerfile: food-classifier/deploy/Dockerfile
+    image: foodtest-classifier:1.2-shared
+    restart: unless-stopped
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set the existing HTTPS origin}
+      FOOD_CLASSIFIER_BASE_PATH: /foodtest
+    ports:
+      - '127.0.0.1:18011:8011'
+    volumes:
+      - type: bind
+        source: ./library/references
+        target: /app/references
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./library/food-classifier/resources/guide-pages.json
+        target: /app/food-classifier/resources/guide-pages.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - query_data:/var/lib/food-classifier
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+    logging:
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  query_data:

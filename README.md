@@ -4,6 +4,8 @@
 
 输入食品名称，查看分类路径、判断依据、原文页码、关联检验项目和国家标准文件。前端使用原生 HTML/CSS/JavaScript，后端使用 Python 标准库 HTTP 服务和 SQLite，默认仅供本机使用。
 
+在线入口：[食分工作台](https://yaoanxin.xyz/foodtest/)。在线部署使用配套资料快照，查询历史按浏览器隔离；清除 Cookie 或更换浏览器后无法找回该浏览器的历史，请及时导出重要结果。这是匿名访客隔离，不是机构账号及角色权限系统。
+
 ## 本仓库范围
 
 本仓库仅包含食品分类系统源码、必要的分类映射配置、启动脚本和测试代码。**标准全文、资料索引和分类数据集另行提供，本仓库不包含运行所需的资料库。直接克隆后，需要先准备下述外部资料才能启动完整查询功能。**
@@ -18,6 +20,7 @@
 - 多分支食品分别预览候选项目表；没有可靠关联时显示待关联，不将缺口当作 0 项。
 - 展示项目引用、分节引用、标准版本和原文缺口；支持原文预览、下载和关联文件打包。
 - 在本机保存查询历史和人工复核记录。
+- 支持 HTTPS 共享部署，按访客隔离查询、导出和复核记录；可挂载在已有网站的 `/foodtest/` 路径。
 
 分类基于名称、规则和有来源的层级关联，目前没有接入语义模型。自动关联不等于已确认样品适用性或本次任务必检项目；原料、工艺、比例、条件脚注和例外仍需核对。
 
@@ -38,6 +41,7 @@ food-classifier/
   export_matching_tables.py       导出实际匹配表
   audit_inspection_links.py       回放检验项目表关联
   tests/                         自动测试和浏览器测试源码
+  deploy/                        Docker、反向代理、资料打包与校验工具
 ```
 
 ## 准备外部资料
@@ -83,9 +87,9 @@ python -X utf8 food-classifier/server.py --port 8011
 
 打开 <http://127.0.0.1:8011>。Windows 也可双击 `food-classifier/启动食品分类系统.cmd`；启动器优先使用本机已有的 Codex Python 运行时，找不到时使用系统 `python`。
 
-基础查询、SQLite 和文件打包仅使用 Python 标准库。`requirements.txt` 中的 `pypdfium2` 用于 PDF 页图像预览；未安装时仍可打开原始 PDF。生成缓存另需上面的 `pypdf`。
+基础查询、SQLite 和文件打包仅使用 Python 标准库。`requirements.txt` 中的 `pypdfium2` 和 `Pillow` 用于 PDF 页图像预览；生成缓存另需上面的 `pypdf`。
 
-数据库、预览缓存及启动日志写入 `food-classifier/data/`，已加入忽略规则。替换资料库后应重新生成相应缓存并重启服务。系统仅监听本机，尚无账号认证和角色权限。
+数据库、预览缓存及启动日志默认写入 `food-classifier/data/`，已加入忽略规则。替换资料库后应重新生成相应缓存并重启服务。默认仅监听本机；公网部署需显式设置 HTTPS 公共地址，具体步骤见 [部署说明](food-classifier/deploy/README.md)。
 
 ## 主要接口
 
@@ -100,10 +104,10 @@ python -X utf8 food-classifier/server.py --port 8011
 
 ## 验证
 
-完整测试需要上述外部资料。原工作环境中，v1.2 已通过 30 项自动测试和 23 项浏览器交互检查；这些是功能回归结果，不代表对所有食品的分类准确率验证。
+完整测试需要上述外部资料。当前已通过 42 项自动测试，覆盖分类、来源定位、检验项目继承、访客隔离、子路径和部署文件时间兼容性。上线前还进行了公网浏览器检查。这些是功能回归结果，不代表对所有食品的分类准确率验证。
 
 ```powershell
-python -X utf8 -m unittest discover -s food-classifier/tests -p test_system.py -v
+python -X utf8 -m unittest discover -s food-classifier/tests -p "test*.py" -v
 ```
 
 浏览器测试需要 Node.js、Playwright 和 Edge，默认使用本机 Codex 运行时路径。其他环境可在 PowerShell 中设置实际安装位置后执行：

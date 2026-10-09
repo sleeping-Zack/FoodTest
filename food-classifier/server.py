@@ -1,12 +1,15 @@
-"""Local-only full-stack server. Python standard library; optional PDFium preview."""
+"""Food classifier HTTP service; public mode runs behind an HTTPS reverse proxy."""
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import io
 import json
 import mimetypes
+import os
 import re
+import secrets
 import sqlite3
 import tempfile
 import threading
@@ -14,6 +17,7 @@ import uuid
 import zipfile
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.cookies import SimpleCookie
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
@@ -36,6 +40,9 @@ class Store:
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS queries (id TEXT PRIMARY KEY, created_at TEXT, food TEXT, status TEXT, result TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, query_id TEXT, created_at TEXT, actor TEXT, action TEXT, note TEXT)')
+            if 'owner' not in {row[1] for row in db.execute('PRAGMA table_info(queries)')}:
+                db.execute("ALTER TABLE queries ADD COLUMN owner TEXT NOT NULL DEFAULT ''")
+            db.execute('CREATE INDEX IF NOT EXISTS queries_owner_created ON queries(owner, created_at)')
 
     @contextmanager
     def connect(self):
@@ -46,33 +53,33 @@ class Store:
         finally:
             db.close()
 
-    def save(self, result):
+    def save(self, result, owner=''):
         result = dict(result, id=str(uuid.uuid4()), created_at=now())
         with self.connect() as db:
-            db.execute('INSERT INTO queries VALUES(?,?,?,?,?)', (result['id'], result['created_at'], result['query'], result['status'], json.dumps(result, ensure_ascii=False)))
+            db.execute('INSERT INTO queries(id,created_at,food,status,result,owner) VALUES(?,?,?,?,?,?)', (result['id'], result['created_at'], result['query'], result['status'], json.dumps(result, ensure_ascii=False), owner))
         return result
 
-    def get(self, query_id):
+    def get(self, query_id, owner=''):
         with self.connect() as db:
-            row = db.execute('SELECT result FROM queries WHERE id=?', (query_id,)).fetchone()
+            row = db.execute('SELECT result FROM queries WHERE id=? AND owner=?', (query_id, owner)).fetchone()
         if not row:
             raise KeyError(query_id)
         result = json.loads(row[0])
-        result['reviews'] = self.reviews(query_id)
+        result['reviews'] = self.reviews(query_id, owner)
         return result
 
-    def history(self):
+    def history(self, owner=''):
         with self.connect() as db:
-            rows = db.execute('SELECT id,created_at,food,status FROM queries ORDER BY created_at DESC,rowid DESC LIMIT 60').fetchall()
+            rows = db.execute('SELECT id,created_at,food,status FROM queries WHERE owner=? ORDER BY created_at DESC,rowid DESC LIMIT 60', (owner,)).fetchall()
         return [dict(zip(['id', 'created_at', 'food', 'status'], row)) for row in rows]
 
-    def reviews(self, query_id):
+    def reviews(self, query_id, owner=''):
         with self.connect() as db:
-            rows = db.execute('SELECT id,created_at,actor,action,note FROM reviews WHERE query_id=? ORDER BY rowid', (query_id,)).fetchall()
+            rows = db.execute('SELECT r.id,r.created_at,r.actor,r.action,r.note FROM reviews r JOIN queries q ON q.id=r.query_id WHERE r.query_id=? AND q.owner=? ORDER BY r.rowid', (query_id, owner)).fetchall()
         return [dict(zip(['id', 'created_at', 'actor', 'action', 'note'], row)) for row in rows]
 
-    def add_review(self, query_id, payload):
-        self.get(query_id)
+    def add_review(self, query_id, payload, owner=''):
+        self.get(query_id, owner)
         actor = str(payload.get('actor', '')).strip()
         action = str(payload.get('action', ''))
         note = str(payload.get('note', '')).strip()
@@ -84,7 +91,7 @@ class Store:
             raise ValueError('请填写处理依据或待补充内容，最多 2000 字。')
         with self.connect() as db:
             db.execute('INSERT INTO reviews VALUES(?,?,?,?,?,?)', (str(uuid.uuid4()), query_id, now(), actor, action, note))
-        return self.reviews(query_id)
+        return self.reviews(query_id, owner)
 
 
 def bundle_files(library, result, include_history=False):
@@ -121,6 +128,8 @@ class Handler(BaseHTTPRequestHandler):
             print(f'[{now()}] {self.command} {urlsplit(self.path).path} {args[1] if len(args)>1 else ""}', flush=True)
 
     def end_headers(self):
+        if getattr(self, 'session_cookie', None):
+            self.send_header('Set-Cookie', self.session_cookie)
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('X-Frame-Options', 'SAMEORIGIN')
@@ -137,14 +146,41 @@ class Handler(BaseHTTPRequestHandler):
 
     def check_request(self):
         host = self.headers.get('Host', '')
-        expected = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
+        public_origin = self.server.public_origin
+        local_hosts = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
+        # Container health checks may use localhost, but never access visitor data.
+        health = self.command in {'GET', 'HEAD'} and self.path == '/api/health' and host in local_hosts
+        expected = {urlsplit(public_origin).netloc} if public_origin else local_hosts
+        if health:
+            expected = expected | local_hosts
         if host not in expected:
-            raise PermissionError('仅接受本机访问。')
+            raise PermissionError('访问地址未配置。' if public_origin else '仅接受本机访问。')
         origin = self.headers.get('Origin')
-        if origin and origin not in {'http://' + h for h in expected}:
+        origins = {public_origin} if public_origin else {'http://' + h for h in expected}
+        if origin and origin not in origins:
             raise PermissionError('不接受跨站请求。')
-        if self.headers.get('Sec-Fetch-Site') == 'cross-site':
+        external_navigation = (public_origin and self.command in {'GET', 'HEAD'}
+                               and self.headers.get('Sec-Fetch-Mode') == 'navigate'
+                               and self.headers.get('Sec-Fetch-Dest') == 'document')
+        if self.headers.get('Sec-Fetch-Site') == 'cross-site' and not external_navigation:
             raise PermissionError('不接受跨站请求。')
+
+    def prepare_session(self):
+        self.owner = ''
+        self.session_cookie = None
+        if not self.server.public_origin or self.path == '/api/health':
+            return
+        cookies = SimpleCookie()
+        try:
+            cookies.load(self.headers.get('Cookie', ''))
+        except Exception:
+            cookies = SimpleCookie()
+        item = cookies.get('__Host-food_session')
+        token = item.value if item else ''
+        if not re.fullmatch(r'[a-f0-9]{64}', token):
+            token = secrets.token_hex(32)
+            self.session_cookie = f'__Host-food_session={token}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=31536000'
+        self.owner = hashlib.sha256(token.encode('ascii')).hexdigest()
 
     def send_json(self, data, status=200):
         body = json.dumps(data, ensure_ascii=False).encode('utf8')
@@ -227,6 +263,7 @@ class Handler(BaseHTTPRequestHandler):
     def dispatch(self, post):
         try:
             self.check_request()
+            self.prepare_session()
             self.route(post)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
@@ -238,26 +275,37 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'error': str(exc)}, 400)
         except Exception as exc:
             print(f'Internal error: {type(exc).__name__}: {exc}', flush=True)
-            self.send_json({'error': '处理失败，请查看本机服务日志后重试。'}, 500)
+            self.send_json({'error': '处理失败，请稍后重试或联系网站维护人员。'}, 500)
 
     def route(self, post):
         url = urlsplit(self.path)
         path, args = url.path, parse_qs(url.query)
+        base = self.server.base_path
+        if base and path == base and not post:
+            self.send_response(308)
+            self.send_header('Location', base + '/' + ('?' + url.query if url.query else ''))
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
+        if base and path.startswith(base + '/'):
+            path = path[len(base):]
+        elif base and path != '/api/health':
+            raise KeyError(path)
         getarg = lambda key, default='': args.get(key, [default])[0]
         if post:
             payload = self.read_payload()
             if path == '/api/classify':
-                self.send_json(self.store.save(self.library.classify(payload)), 201)
+                self.send_json(self.store.save(self.library.classify(payload), self.owner), 201)
                 return
             match = re.fullmatch(r'/api/queries/([\w-]+)/reviews', path)
             if match:
-                self.send_json({'reviews': self.store.add_review(match[1], payload)}, 201)
+                self.send_json({'reviews': self.store.add_review(match[1], payload, self.owner)}, 201)
                 return
             raise KeyError(path)
         if path == '/api/health':
             self.send_json({'ok': True, 'app': 'food-classifier', 'version': VERSION})
         elif path == '/api/meta':
-            self.send_json(self.library.metadata())
+            self.send_json(dict(self.library.metadata(), deployment_mode='shared' if self.server.public_origin else 'local'))
         elif path == '/api/catalog':
             self.send_json(self.library.catalog(getarg('q'), getarg('chapter')))
         elif path == '/api/definitions':
@@ -265,15 +313,16 @@ class Handler(BaseHTTPRequestHandler):
         elif match := re.fullmatch(r'/api/inspection-options/([\w-]+)', path):
             self.send_json(self.library.inspection_preview(match[1]))
         elif path == '/api/history':
-            self.send_json({'queries': self.store.history()})
+            self.send_json({'queries': self.store.history(self.owner)})
         elif match := re.fullmatch(r'/api/queries/([\w-]+)(/bundle|/export)?', path):
-            result = self.store.get(match[1])
+            result = self.store.get(match[1], self.owner)
             if match[2] == '/bundle':
                 self.send_bundle(result, getarg('history') == '1')
             elif match[2] == '/export':
                 content = json.dumps(result, ensure_ascii=False, indent=2).encode('utf8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Cache-Control', 'private, no-store')
                 self.send_header('Content-Disposition', "attachment; filename*=UTF-8''" + quote(result['query'] + '-分类与依据.json'))
                 self.send_header('Content-Length', str(len(content)))
                 self.end_headers()
@@ -307,7 +356,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             import pypdfium2 as pdfium
         except ImportError:
-            self.send_json({'error': '本机未安装页面预览组件，可通过“打开原文”查看。'}, 503)
+            self.send_json({'error': '服务未安装页面预览组件，可通过“打开原文”查看。'}, 503)
             return
         cache = self.store.directory / 'preview'
         cache.mkdir(exist_ok=True)
@@ -343,7 +392,9 @@ class Handler(BaseHTTPRequestHandler):
                             for s in result['standards'] if s['national'] and not any(
                                 any(v['code'] == f['standard'] for v in s['versions']) for f in files)],
                         'limitations': result['limitations']}
-            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_STORED, allowZip64=True) as z:
+            # Deployment archives may normalize source mtimes to Unix epoch.
+            # ZIP dates start in 1980; clamp metadata without changing document bytes.
+            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_STORED, allowZip64=True, strict_timestamps=False) as z:
                 z.writestr('文件清单与缺口.json', json.dumps(manifest, ensure_ascii=False, indent=2))
                 z.writestr('分类结果与原文依据.json', json.dumps(result, ensure_ascii=False, indent=2))
                 z.writestr('阅读说明.txt', '这是本次分类候选的关联资料包，不等于已确认的必检标准清单。\n请阅读文件清单中的版本状态、关系和缺口；草案与身份冲突文件已排除。\n部分分节引用可能只适用于同节的其他子类，须核对原文。\n')
@@ -354,22 +405,71 @@ class Handler(BaseHTTPRequestHandler):
             self.send_path(archive, 'application/zip', True, result['query'] + '-关联国标资料.zip')
 
 
-def make_server(port=8011, data=DATA):
-    library = Library()
+class LimitedHTTPServer(ThreadingHTTPServer):
+    """Bound connection count and idle reads behind the reverse proxy."""
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(24)
+        super().__init__(*args, **kwargs)
+
+    def get_request(self):
+        request, address = super().get_request()
+        request.settimeout(30)
+        return request, address
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            try:
+                request.sendall(b'HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\nRetry-After: 5\r\n\r\n')
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+
+def make_server(port=8011, data=DATA, bind='127.0.0.1', public_origin='', base_path=''):
+    base_path = base_path.rstrip('/')
+    if base_path and not re.fullmatch(r'(?:/[A-Za-z0-9_-]+)+', base_path):
+        raise ValueError('网站路径只能包含字母、数字、下划线和短横线。')
+    if public_origin:
+        origin = urlsplit(public_origin)
+        if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path not in {'', '/'} or origin.query or origin.fragment:
+            raise ValueError('PUBLIC_ORIGIN 必须是网站的 HTTPS 根地址，例如 https://food.example.com。')
+        public_origin = public_origin.rstrip('/')
+    elif bind not in {'127.0.0.1', 'localhost', '::1'}:
+        raise ValueError('对外监听必须配置 PUBLIC_ORIGIN，并置于 HTTPS 代理之后。')
+    library = Library(base_path=base_path)
     store = Store(data)
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    server = LimitedHTTPServer((bind, port), Handler)
     server.library = library
     server.store = store
+    server.public_origin = public_origin
+    server.base_path = base_path
     return server
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='食品分类与国标依据工作台（仅限本机）')
-    parser.add_argument('--port', type=int, default=8011)
-    parser.add_argument('--data-dir', type=Path, default=DATA)
+    parser = argparse.ArgumentParser(description='食品分类与国标依据工作台')
+    parser.add_argument('--port', type=int, default=int(os.environ.get('PORT', '8011')))
+    parser.add_argument('--data-dir', type=Path, default=Path(os.environ.get('FOOD_CLASSIFIER_DATA_DIR', str(DATA))))
+    parser.add_argument('--bind', default=os.environ.get('FOOD_CLASSIFIER_BIND', '127.0.0.1'))
+    parser.add_argument('--public-origin', default=os.environ.get('PUBLIC_ORIGIN', ''))
+    parser.add_argument('--base-path', default=os.environ.get('FOOD_CLASSIFIER_BASE_PATH', ''))
     args = parser.parse_args()
-    server = make_server(args.port, args.data_dir)
-    print(f'食品分类与国标依据工作台：http://127.0.0.1:{server.server_port} （资料快照 {SNAPSHOT}）', flush=True)
+    server = make_server(args.port, args.data_dir, args.bind, args.public_origin, args.base_path)
+    address = (server.public_origin or f'http://127.0.0.1:{server.server_port}') + server.base_path + '/'
+    print(f'食品分类与国标依据工作台：{address} （资料快照 {SNAPSHOT}）', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,3 +1,4 @@
 # HTTP API, file download, ZIP and SQLite use Python's standard library (Python 3.11+).
 # Optional: embedded page-image preview; original PDF viewing works without it.
 pypdfium2>=4.30,<6
+Pillow>=10,<13

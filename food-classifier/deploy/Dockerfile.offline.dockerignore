@@ -1,0 +1,17 @@
+# Docker build context: allow only classifier code and assets.
+**
+!food-classifier/
+!food-classifier/*.py
+!food-classifier/requirements.txt
+!food-classifier/web/
+!food-classifier/web/**
+!food-classifier/resources/
+!food-classifier/resources/inspection-bridges.json
+!food-classifier/deploy/
+!food-classifier/deploy/Dockerfile
+!food-classifier/deploy/Dockerfile.dockerignore
+
+!food-classifier/deploy/Dockerfile.offline
+!food-classifier/deploy/Dockerfile.offline.dockerignore
+!food-classifier/deploy/wheels/
+!food-classifier/deploy/wheels/*.whl

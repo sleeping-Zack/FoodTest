@@ -95,8 +95,9 @@ RAW_CHAPTERS = {'C33', 'C34', 'C35', 'C36', 'C37', 'C38', 'C39'}
 
 
 class Library:
-    def __init__(self, root=ROOT):
+    def __init__(self, root=ROOT, base_path=''):
         self.root = Path(root).resolve()
+        self.base_path = base_path
         self.lib = self.root / 'references/食品标准资料库'
         self.guide = read_json(self.lib / '索引/食品项目标准方法关联.json')
         self.registry = read_json(self.lib / '索引/标准总目录.json')
@@ -158,8 +159,8 @@ class Library:
         if not value:
             return None
         return {k: value.get(k) for k in ['id', 'name', 'size', 'sha256', 'page_count', 'extraction_status', 'unreliable_text_pages']} | {
-            'url': '/api/files/' + file_id, 'format': value['path'].suffix[1:],
-            'download_url': '/api/files/' + file_id + '?download=1'}
+            'url': self.base_path + '/api/files/' + file_id, 'format': value['path'].suffix[1:],
+            'download_url': self.base_path + '/api/files/' + file_id + '?download=1'}
 
     def evidence(self, file_id, page, quote, locator='', bbox=None, printed_page=None):
         return {'file_id': file_id, 'pdf_page': page, 'printed_page': printed_page, 'quote': quote,

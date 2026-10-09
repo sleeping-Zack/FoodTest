@@ -1,0 +1,7 @@
+.env
+library/
+wheels/
+*.tar
+*.tar.gz
+*.zip
+*-manifest.json
