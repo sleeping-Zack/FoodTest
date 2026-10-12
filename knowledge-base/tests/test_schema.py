@@ -50,7 +50,7 @@ def release(conn,rid,review):
 
 
 def test_migration_idempotency(conn):
-    first=migrate(conn);assert migrate(conn)==first and len(first)==12
+    first=migrate(conn);assert migrate(conn)==first and len(first)==13
 
 
 def test_migration_checksum_mismatch_rejected(conn):

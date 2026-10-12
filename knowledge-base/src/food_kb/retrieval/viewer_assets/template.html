@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' file: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>@@TITLE@@</title><link rel="stylesheet" href="@@RESOURCES@@/viewer.css"><script defer src="@@RESOURCES@@/viewer.js"></script></head>
+<body><header><div class="brand">查</div><div><div class="eyebrow">食品标准知识库 / KB-10</div><h1>精确查询与中文全文检索</h1></div><span class="offline">● 离线结果</span></header>
+<section class="intro"><div><h2>找到候选，也看清命中依据。</h2><p>原始与规范化查询对照，中文项目逐字段命中，版本、条件和来源随结果保留。</p></div><div id="statistics" class="statistics"></div></section>
+<div class="notice"><strong>命中不等于适用，也不等于完整应检清单。真实知识仍待审。</strong><p>GB 与 GB/T、年份、方法和判定依据分开。苹果汁可作为相关文本候选，不因此变成苹果同一分类。未知条件不作排除过滤。</p><p id="coverage-state"></p><p id="snapshot-state"></p></div>
+<section class="panel"><div class="heading"><h3>查看已保存的查询</h3><button id="download-result" type="button">下载当前结果 JSON</button></div><p class="help">输入只筛选本包中已执行的查询场景，不在浏览器重新检索数据库。</p><div class="controls"><div><label for="scenario-search">查询 / 标准号 / 项目</label><input id="scenario-search" type="search" placeholder="全角标准号、铅、砷、苹果、索引故障…" autocomplete="off"></div><div><label for="kind-filter">查看内容</label><select id="kind-filter"><option value="all">全部查询</option><option value="exact">精确查询</option><option value="lexical">中文全文</option><option value="comparison">方案比较</option><option value="failure">降级与故障</option></select></div></div><div id="case-buttons" class="example-buttons"></div><p id="no-case" class="empty" hidden>本结果包没有匹配的已保存查询。不能据此判断库中无资料或无应检要求。</p></section>
+<main id="results"><section class="panel"><div class="heading"><h2 id="query-title"></h2><div id="query-badges" class="badges"></div></div><p id="query-note" class="help"></p><div id="result-overview"></div><div id="query-input"></div></section><div id="query-details"></div></main>
+<section class="panel" id="evaluation-panel"><div class="heading"><h3>三种方案的工程评测</h3><button id="download-evaluation" type="button">下载评测 JSON</button></div><p class="help">标签来自显式选择的来源记录及合成反例，未经食品专家审核。未标注结果单列；检索分数不是业务置信度。精确名称和相关文本的界限需分别核对。</p><div id="evaluation-summary"></div><details><summary>逐查询标签、排名和性能环境</summary><pre id="evaluation-json"></pre></details></section>
+<section class="panel"><div class="heading"><h3>当前查询的来源与原文定位</h3><span id="evidence-count" class="help"></span></div><p class="help">来源引用是登记定位，不替代专家核验；只有随包文件与记录哈希一致时才提供入口。</p><div id="evidence-list"></div></section>
+<details class="panel trace-details"><summary>冻结结果与追溯标识</summary><dl id="trace-data"></dl><pre id="result-json"></pre></details>
+<footer>精确字段 / 中文文字 → 候选与命中词 → 来源、条件与缺口 <span>本页不批准知识、不执行检查规则。</span></footer>
+<script id="viewer-data" type="application/json">@@DATA@@</script></body></html>

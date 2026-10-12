@@ -19,7 +19,7 @@ food-kb = "food_kb.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-food_kb = ["db/migrations/*.sql", "ingest/legacy_fields.json", "knowledge/viewer_assets/*", "taxonomy/viewer_assets/*", "versions/viewer_assets/*", "chunking/viewer_assets/*", "chunking/viewer_assets/vendor/manifest.json", "chunking/viewer_assets/vendor/markdown-it/*", "chunking/viewer_assets/vendor/katex/*", "chunking/viewer_assets/vendor/katex/fonts/*"]
+food_kb = ["db/migrations/*.sql", "ingest/legacy_fields.json", "knowledge/viewer_assets/*", "taxonomy/viewer_assets/*", "versions/viewer_assets/*", "retrieval/viewer_assets/*", "chunking/viewer_assets/*", "chunking/viewer_assets/vendor/manifest.json", "chunking/viewer_assets/vendor/markdown-it/*", "chunking/viewer_assets/vendor/katex/*", "chunking/viewer_assets/vendor/katex/fonts/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

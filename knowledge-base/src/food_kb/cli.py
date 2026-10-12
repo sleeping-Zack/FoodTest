@@ -76,6 +76,15 @@ def main(argv=None):
     references.add_argument('--max-edges',type=int,default=200);references.add_argument('--facts')
     impact=sub.add_parser('versions-impact');impact.add_argument('left');impact.add_argument('right')
     impact.add_argument('--max-nodes',type=int,default=10000);impact.add_argument('--max-edges',type=int,default=50000)
+    retrieval=sub.add_parser('retrieval-build');retrieval.add_argument('--context',required=True,help='JSON with four explicit source snapshot IDs.')
+    retrieval_report=sub.add_parser('retrieval-report');retrieval_report.add_argument('generation_id')
+    exact=sub.add_parser('query-exact');exact.add_argument('generation_id');exact.add_argument('--filters',required=True)
+    lexical=sub.add_parser('query-lexical');lexical.add_argument('generation_id');lexical.add_argument('--query',required=True)
+    lexical.add_argument('--mode',choices=['literal_raw','normalized_phrase','zh_ngram_phrase'],default='zh_ngram_phrase')
+    lexical.add_argument('--filters')
+    for query_parser in (exact,lexical):
+        query_parser.add_argument('--confirmed-conditions');query_parser.add_argument('--limit',type=int,default=50)
+        query_parser.add_argument('--offset',type=int,default=0)
     queue=sub.add_parser('knowledge-review-queue');queue.add_argument('--extraction-id')
     review=sub.add_parser('review-knowledge');review.add_argument('record_id')
     review.add_argument('--action',required=True,choices=['approved','rejected','supplement_requested','comment','disputed','withdrawn','reinstated','superseded'])
@@ -175,6 +184,18 @@ def main(argv=None):
                     from .versions.impact import impact_snapshots
                     result=impact_snapshots(read_snapshot(conn,args.left),read_snapshot(conn,args.right),
                         max_nodes=args.max_nodes,max_edges=args.max_edges)
+                elif args.command=='retrieval-build':
+                    from .retrieval.repository import build_generation
+                    result=build_generation(conn,config,read_json(args.context))
+                elif args.command=='retrieval-report':
+                    from .retrieval.repository import read_generation
+                    result=read_generation(conn,args.generation_id)
+                elif args.command in {'query-exact','query-lexical'}:
+                    from .retrieval.service import search
+                    result=search(conn,args.generation_id,query=getattr(args,'query',None),
+                        mode='exact' if args.command=='query-exact' else args.mode,
+                        filters=read_json(args.filters) if args.filters else None,limit=args.limit,offset=args.offset,
+                        confirmed_conditions=read_json(args.confirmed_conditions) if args.confirmed_conditions else None)
                 elif args.command=='knowledge-review-queue':
                     from .knowledge.service import review_queue
                     result=review_queue(conn,args.extraction_id)
