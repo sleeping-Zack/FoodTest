@@ -171,6 +171,8 @@ def verify(config, output, selection):
         elif isinstance(item, list):
             for value in item: scan(value)
     scan(cases)
+    # Keep the accepted MD's page images and source maps with its relative links.
+    keys.update(s['source_key'] for s in corpus['sources'] if s['source_key'].startswith('manual/'))
     copied = []
     for s in corpus['sources']:
         if s['source_key'] not in keys: continue
