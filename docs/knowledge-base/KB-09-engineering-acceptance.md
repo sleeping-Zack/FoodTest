@@ -1,0 +1,15 @@
+# KB-09 engineering acceptance
+
+2026-10-12. Implemented version resolution, typed references, bounded expansion, evidence gaps, and incremental impact analysis. This is engineering acceptance of the retained local source set; it does not approve real standards, determine legal validity, or establish overall business accuracy.
+
+The requirement document was read in full before implementation: declared version 1.0 / 2026-09-30, updated 2026-10-09T12:27:41Z, body SHA-256 `5c8f8bda9dfee14500b943d92031a913d2c9585633811f1c33313958ad6ca441`. Original documents and requirement content remain local.
+
+Verified on PostgreSQL 18.6: **627 tests passed, no failures or skips**, plus **18 retained replay scenarios**. Scenarios distinguish real registered candidates from synthetic dates/policies/events. They cover historical sample dates versus export dates, explicit inclusive/exclusive boundaries, production/testing transitions, missing roles, conflicting effective evidence, amendments without principal text, exact dated binding, unresolved undated binding, cycles, resource limits, and explicit impact tracing.
+
+The local candidate snapshot contains 2,019 versions (1,962 principal standards, 56 amendments, one inspection guide), 21,296 representable references, 399 events, 2,188 hash-verified source members, and 52,148 candidate impact links. Six unrepresentable reference records remain in the original registration with source-bound gaps. All real business-date policies remain unverified; candidates are `review_pending`, `scope_complete=false`, and `executable=false`. Mentions and replacement claims are not verified normative dependencies.
+
+Migrations 011 and 012 append immutable snapshots and source members. The second migration reduces repeated full-payload validation while preserving exact identity checks, rejection of late members and mismatched manifests, transaction rollback, and immediate-constraint behavior. Applied migration 011 was not edited. The initial snapshot was retained when the source processor advanced to `version-reference-sources-2`; its payload hash remained unchanged.
+
+Replay confirmed zero incremental writes on repetition, read-only queries, unchanged previous domain tables, and unchanged hashes for 16,789 source/previous evidence files. Old knowledge releases and classification snapshots remain retained. Impact examples add synthetic events only in memory and return recheck candidates; they do not invent tasks, approve knowledge, or change old releases.
+
+Publication includes code, tests, migrations, runtime assets with licenses, dependencies, a credential-free configuration example, and this acceptance note. Source standards, manual transcriptions, business input, local configurations, secrets, result artifacts, and database backups are excluded. Tests requiring those retained local inputs skip explicitly when unavailable; pure and synthetic tests remain runnable with the documented dedicated test database. No production deployment was performed.

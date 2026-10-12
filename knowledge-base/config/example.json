@@ -1,0 +1,20 @@
+{
+  "source_root": "../..",
+  "allowed_sources": [
+    "references/食品标准资料库",
+    "references/国家食品安全抽检实施细则（2026年版 上册）.pdf",
+    "food-classifier/resources/guide-pages.json",
+    "food-classifier/resources/inspection-bridges.json",
+    "backend/standard_rules.json",
+    "backend/method_references.json"
+  ],
+  "output_root": "../../artifacts/knowledge-base/data",
+  "database": {
+    "host": "127.0.0.1",
+    "port": 55432,
+    "dbname": "food_kb_m1",
+    "user": "kb_app",
+    "password_env": "FOOD_KB_PASSWORD"
+  },
+  "provider": "disabled"
+}

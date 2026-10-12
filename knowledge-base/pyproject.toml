@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "food-kb"
+version = "0.1.0"
+description = "Local, provenance-preserving food standards registry"
+requires-python = ">=3.11"
+dependencies = ["psycopg[binary]==3.3.6", "PyMuPDF==1.28.2"]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1"]
+
+[project.scripts]
+food-kb = "food_kb.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+food_kb = ["db/migrations/*.sql", "ingest/legacy_fields.json", "knowledge/viewer_assets/*", "taxonomy/viewer_assets/*", "versions/viewer_assets/*", "chunking/viewer_assets/*", "chunking/viewer_assets/vendor/manifest.json", "chunking/viewer_assets/vendor/markdown-it/*", "chunking/viewer_assets/vendor/katex/*", "chunking/viewer_assets/vendor/katex/fonts/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

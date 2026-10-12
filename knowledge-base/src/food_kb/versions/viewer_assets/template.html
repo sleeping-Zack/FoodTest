@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' file: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>@@TITLE@@</title><link rel="stylesheet" href="@@RESOURCES@@/viewer.css"><script defer src="@@RESOURCES@@/viewer.js"></script></head>
+<body><header><div class="brand">版</div><div><div class="eyebrow">食品标准知识库 / KB-09</div><h1>版本、引用与缺口</h1></div><span class="offline">● 离线结果</span></header>
+<section class="intro"><div><h2>历史依据有来处，未知条件不跳过。</h2><p>查看日期角色与选版理由，沿类型化引用追溯，并保留修改单、主体及影响范围。</p></div><div id="statistics" class="statistics"></div></section>
+<div class="notice"><strong>版本适用与身份审核分别管理；真实知识仍待审。</strong><p>没有日期角色和适用制度依据，不默认今天或最新版。修改单不代替主体全文。本页只读已保存的结果，合成样例不是实际食品或专家确认。</p><p id="snapshot-state"></p></div>
+<section class="panel"><div class="heading"><h3>查看已保存的场景</h3><button id="download-result" type="button">下载当前结果 JSON</button></div><p class="help">输入只筛选本结果包的已保存场景，不执行新的版本选择或引用展开。</p><div class="controls"><div><label for="scenario-search">场景 / 标准号</label><input id="scenario-search" type="search" placeholder="历史日期、缺日期角色、循环、修改单…" autocomplete="off"></div><div><label for="kind-filter">查看内容</label><select id="kind-filter"><option value="all">全部场景</option><option value="resolution">日期与版本</option><option value="references">引用展开</option><option value="impact">增量影响</option></select></div></div><div id="example-buttons" class="example-buttons"></div><p id="no-example" class="empty" hidden>本结果包没有匹配的场景。不能据此判定无适用版本、无引用或无影响。</p></section>
+<main id="results"><section class="panel"><div class="heading"><h2 id="query-title"></h2><div id="query-badges" class="badges"></div></div><p id="query-note" class="help"></p><div id="result-overview"></div><div id="query-issues" class="issues"></div></section><div id="query-details"></div></main>
+<section class="panel"><div class="heading"><h3>真实资料的版本与缺口</h3><span id="catalog-count" class="help"></span></div><p class="help">登记状态是来源声明，不能代替生效或废止依据。点击版本可查看主体、附件、日期声明和关联缺口。</p><input id="catalog-search" type="search" aria-label="筛选版本目录" placeholder="筛选标准号、标题或缺口…"><div id="version-catalog"></div></section>
+<section class="panel"><div class="heading"><h3>原文和来源定位</h3><span id="evidence-count" class="help"></span></div><p class="help">只为当前场景列出证据。原文保持原样，文件入口经过哈希检查；页码声明和已核坐标分开。</p><div id="evidence-list"></div></section>
+<details class="panel trace-details"><summary>冻结结果与追溯标识</summary><dl id="trace-data"></dl><pre id="result-json"></pre></details>
+<footer>日期及适用制度 → 版本候选 → 引用与主体 → 缺口及重查范围 <span>本页不批准知识、不发布规则。</span></footer>
+<script id="viewer-data" type="application/json">@@DATA@@</script></body></html>
